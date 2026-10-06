@@ -1,0 +1,72 @@
+# Single compose file for both Docker Compose and podman-compose.
+#
+#   docker compose up
+#   podman-compose up
+#
+# Everything runs locally by default (ingestion talks to the bundled
+# `typesense` service). To point the ingestion at a remote Typesense node,
+# override the ING_TYPESENSE_* variables in your shell, in a `.env` file, or
+# via `--env-file` (e.g. `podman-compose --env-file dev.env up`):
+#
+#   ING_TYPESENSE_HOST=typesense.apps.wuvt.vt.edu \
+#   ING_TYPESENSE_PORT=443 \
+#   ING_TYPESENSE_PROTO=https \
+#   docker compose up
+services:
+  postgres:
+    image: docker.io/library/postgres:14-alpine
+    container_name: rolled-pg
+    restart: always
+    env_file: "dev.env"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: rolled
+
+  typesense:
+    image: docker.io/typesense/typesense:28.0
+    container_name: rolled-ts
+    restart: on-failure
+    env_file: "dev.env"
+    ports:
+      - "8108:8108"
+    volumes:
+      - ./typesense_data:/data
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_ENABLE_CORS: "true"
+      TYPESENSE_CORS_DOMAINS: "http://localhost:1337,http://127.0.0.1:1337,http://[::1]:1337"
+
+  ingestion:
+    build:
+      context: ingestion/.
+    container_name: rolled-ingestion
+    restart: on-failure
+    env_file: "dev.env"
+    environment:
+      ING_POSTGRES_HOST: rolled-pg
+      ING_POSTGRES_PORT: 5432
+      ING_POSTGRES_USERNAME: root
+      ING_POSTGRES_DATABASE: rolled
+      ING_TYPESENSE_HOST: ${ING_TYPESENSE_HOST:-rolled-ts}
+      ING_TYPESENSE_PORT: ${ING_TYPESENSE_PORT:-8108}
+      ING_TYPESENSE_PROTO: ${ING_TYPESENSE_PROTO:-http}
+      ING_MUSICBRAINZ_INSTANCE: ${ING_MUSICBRAINZ_INSTANCE:-https://musicbrainz.org}
+    volumes:
+      - ./ingestion_data:/data
+
+  frontend:
+    build:
+      context: frontend/.
+    container_name: rolled-fe
+    restart: always
+    env_file: "dev.env"
+    ports:
+      - "1337:80"
+    environment:
+      FE_TYPESENSE_HOST: ${FE_TYPESENSE_HOST:-localhost}
+      FE_TYPESENSE_PORT: ${FE_TYPESENSE_PORT:-8108}
+      FE_TYPESENSE_PROTO: ${FE_TYPESENSE_PROTO:-http}
+      FE_ALLOWED: "192.168.0.0/24 10.23.0.0/16 10.89.0.0/24 172.16.0.0/12 fd00::/8"

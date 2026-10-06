@@ -41,7 +41,7 @@ In production, you will probably be inclined to use a non-local postgres or type
 
 ### dev
 
-For development purposes, it has all been containerized in a single docker compose file: simply construct a dev.env file in the root of this repository following this format:
+For development purposes, it has all been containerized in a single compose file (`compose.yml`, usable with either `docker compose` or `podman-compose`): simply construct a dev.env file in the root of this repository following this format:
 ```
 POSTGRES_USER=root
 POSTGRES_PASSWORD=<some entropic password. or 'aids'. whichever you prefer.>
@@ -53,7 +53,9 @@ the frontend>
 FE_TYPESENSE_SEARCHKEY=${ING_TYPESENSE_SEARCH_API_KEY}
 ```
 
-place your spreadsheets in `./ingestion_data/sheets/`, run `docker compose up`, then open localhost:1337 in the web browser of your choice.
+place your spreadsheets in `./ingestion_data/sheets/`, run `docker compose up` (or `podman-compose up`), then open localhost:1337 in the web browser of your choice.
+
+By default the ingestion writes to the local `typesense` service. To target a remote node (e.g. `typesense.apps.wuvt.vt.edu`), override `ING_TYPESENSE_HOST` / `ING_TYPESENSE_PORT` / `ING_TYPESENSE_PROTO` in your shell, a `.env` file, or via `--env-file dev.env`.
 
 
 ## contributing

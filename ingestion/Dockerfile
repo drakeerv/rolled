@@ -1,8 +1,10 @@
 FROM docker.io/library/python:3.13-slim
 
-RUN pip install pandas sqlalchemy typesense openpyxl psycopg2-binary xlrd orjson
-
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /ingestion
-COPY . /ingestion
 
-CMD sleep 5 && python3 -u run_pipeline.py
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+
+COPY src ./src
+CMD ["uv", "run", "--no-dev", "ingestion"]
